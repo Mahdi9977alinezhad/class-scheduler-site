@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>پنل مدیریت - سامانه برنامه‌ریزی</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-calendar-alt"></i>
+                سامانه برنامه‌ریزی
+            </a>
+            <nav class="nav-links">
+                <a href="index.html">برنامه هفتگی</a>
+                <a href="admin.html" class="active">مدیریت</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- MAIN -->
+    <main class="container" style="padding-top: 24px;">
+
+        <div class="admin-grid">
+
+            <!-- ===== بخش 1: آپلود فایل اکسل کلاس‌ها ===== -->
+            <section class="admin-card full-width" style="border: 2px dashed var(--gray-300); background: var(--gray-50);">
+                <h2><i class="fas fa-door-open" style="color: #217346;"></i> آپلود فایل اکسل کلاس‌ها</h2>
+                <p class="help-text">فایل اکسل شامل کلاس‌ها با نام و ظرفیت را آپلود کنید.</p>
+                
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: end;">
+                    <div class="form-group" style="flex: 2; min-width: 200px;">
+                        <label>انتخاب فایل اکسل کلاس‌ها</label>
+                        <input type="file" id="excelFile" accept=".xlsx,.xls" style="padding: 8px; border: 1px solid var(--gray-300); border-radius: 8px; width: 100%;">
+                    </div>
+                    <button onclick="system.importRoomsFromExcelFile()" class="btn btn-success" style="height: 44px;">
+                        <i class="fas fa-upload"></i> آپلود کلاس‌ها
+                    </button>
+                    <button onclick="system.downloadSampleExcel('rooms')" class="btn btn-outline" style="height: 44px;">
+                        <i class="fas fa-download"></i> دانلود نمونه کلاس‌ها
+                    </button>
+                </div>
+                
+                <div id="importStatus" class="status-message"></div>
+            </section>
+
+            <!-- ===== بخش 2: آپلود فایل اکسل درس‌ها ===== -->
+            <section class="admin-card full-width" style="border: 2px dashed var(--secondary); background: #f0f7ff;">
+                <h2><i class="fas fa-file-excel" style="color: #1a73e8;"></i> آپلود فایل اکسل درس‌ها</h2>
+                <p class="help-text">فایل اکسل شامل درس‌ها با نام، تعداد دانشجویان، روز و ساعت را آپلود کنید.</p>
+                
+                <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: end;">
+                    <div class="form-group" style="flex: 2; min-width: 200px;">
+                        <label>انتخاب فایل اکسل درس‌ها</label>
+                        <input type="file" id="excelCoursesFile" accept=".xlsx,.xls" style="padding: 8px; border: 1px solid var(--gray-300); border-radius: 8px; width: 100%;">
+                    </div>
+                    <button onclick="system.importCoursesFromExcelFile()" class="btn btn-primary" style="height: 44px;">
+                        <i class="fas fa-upload"></i> آپلود درس‌ها
+                    </button>
+                    <button onclick="system.downloadSampleExcel('courses')" class="btn btn-outline" style="height: 44px;">
+                        <i class="fas fa-download"></i> دانلود نمونه درس‌ها
+                    </button>
+                </div>
+                
+                <div id="importCoursesStatus" class="status-message"></div>
+            </section>
+
+            <!-- ===== بخش 3: مدیریت کلاس‌ها ===== -->
+             <section class="admin-card">
+                <h2><i class="fas fa-door-open" style="color: var(--secondary);"></i> مدیریت کلاس‌ها</h2>
+                <p class="help-text">کلاس‌های موجود را اضافه کنید. هر کلاس می‌تواند در چندین درس استفاده شود.</p>
+                
+                <form id="addRoomForm" onsubmit="system.addRoom(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>نام کلاس *</label>
+                            <input type="text" id="roomName" placeholder="مثال: کلاس ۱۰۱" required>
+                        </div>
+                        <div class="form-group">
+                            <label>ظرفیت کلاس *</label>
+                            <input type="number" id="roomCapacity" placeholder="مثال: ۴۰" min="1" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-block">
+                        <i class="fas fa-plus"></i> افزودن کلاس
+                    </button>
+                </form>
+
+                <div style="margin-top: 16px;">
+                    <h4 style="font-size: 14px; color: var(--gray-600); margin-bottom: 8px;">لیست کلاس‌ها:</h4>
+                    <div id="roomList"></div>
+                </div>
+            </section>
+
+            <!-- ===== بخش 4: مدیریت درس‌ها ===== -->
+            <section class="admin-card">
+                <h2><i class="fas fa-book" style="color: var(--secondary);"></i> مدیریت درس‌ها</h2>
+                <p class="help-text">درس را با تعداد دانشجویان اضافه کنید. سیستم به صورت خودکار کلاس مناسب را انتخاب می‌کند.</p>
+                
+                <form id="addCourseForm" onsubmit="system.addCourse(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>نام درس *</label>
+                            <input type="text" id="courseName" placeholder="مثال: برنامه‌نویسی پیشرفته" required>
+                        </div>
+                        <div class="form-group">
+                            <label>نام استاد *</label>
+                            <input type="text" id="teacherName" placeholder="مثال: دکتر رحیم پور" required>
+                        </div>
+                        <div class="form-group">
+                            <label>تعداد دانشجویان *</label>
+                            <input type="number" id="studentCount" placeholder="مثال: ۳۰" min="1" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>روز هفته *</label>
+                            <select id="courseDay" required>
+                                <option value="">انتخاب روز...</option>
+                                <option value="شنبه">شنبه</option>
+                                <option value="یکشنبه">یکشنبه</option>
+                                <option value="دوشنبه">دوشنبه</option>
+                                <option value="سهشنبه">سهشنبه</option>
+                                <option value="چهارشنبه">چهارشنبه</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>ساعت شروع *</label>
+                            <select id="courseTime" required>
+                                <option value="">انتخاب ساعت...</option>
+                                <option value="08:00-10:00">۰۸:۰۰ - ۱۰:۰۰</option>
+                                <option value="10:00-12:00">۱۰:۰۰ - ۱۲:۰۰</option>
+                                <option value="13:00-15:00">۱۳:۰۰ - ۱۵:۰۰</option>
+                                <option value="15:00-17:00">۱۵:۰۰ - ۱۷:۰۰</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-block">
+                        <i class="fas fa-plus"></i> افزودن درس
+                    </button>
+                </form>
+                <div style="margin-top: 16px;">
+                    <h4 style="font-size: 14px; color: var(--gray-600); margin-bottom: 8px;">لیست درس‌ها:</h4>
+                    <div id="coursesList"></div>
+                </div>
+            </section>
+
+            <!-- ===== بخش 5: برنامه‌ریزی کامل هفته ===== -->
+            <section class="admin-card full-width" style="border: 2px solid var(--success); background: #f0fdf4;">
+                <h2><i class="fas fa-calendar-alt" style="color: var(--success);"></i> برنامه‌ریزی کامل هفته</h2>
+                <p class="help-text">
+                    با کلیک روی این دکمه، سیستم تمام درس‌های ثبت شده را در روزها و ساعت‌های مشخص شده، 
+                    بین کلاس‌های موجود توزیع می‌کند.
+                </p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <button onclick="system.planFullWeek()" class="btn btn-success" style="flex: 1; min-width: 200px; height: 48px; font-size: 16px;">
+                        <i class="fas fa-calendar-check"></i> برنامه‌ریزی کامل هفته
+                    </button>
+                    <span style="color: var(--gray-600); font-size: 13px;">
+                        <i class="fas fa-info-circle"></i> 
+                        <span id="capacityInfo">تعداد کلاس‌ها: ۰ | تعداد درس‌ها: ۰</span>
+                    </span>
+                </div>
+                <div id="fullWeekStatus" class="status-message"></div>
+            </section>
+
+            <!-- ===== بخش 6: اطلاعات سیستم ===== -->
+            <section class="admin-card full-width">
+                <h2><i class="fas fa-chart-pie" style="color: var(--secondary);"></i> اطلاعات سیستم</h2>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; text-align: center;">
+                    <div style="background: var(--gray-50); padding: 16px; border-radius: var(--radius-sm);">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--primary);" id="totalClassesInfo">0</div>
+                        <div style="color: var(--gray-600); font-size: 13px;">تعداد کلاس‌ها</div>
+                    </div>
+                    <div style="background: var(--gray-50); padding: 16px; border-radius: var(--radius-sm);">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--success);" id="totalCoursesInfo">0</div>
+                        <div style="color: var(--gray-600); font-size: 13px;">تعداد درس‌ها</div>
+                    </div>
+                    <div style="background: var(--gray-50); padding: 16px; border-radius: var(--radius-sm);">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--secondary);" id="totalStudentsInfo">0</div>
+                        <div style="color: var(--gray-600); font-size: 13px;">مجموع دانشجویان</div>
+                    </div>
+                    <div style="background: var(--gray-50); padding: 16px; border-radius: var(--radius-sm);">
+                        <div style="font-size: 28px; font-weight: 700; color: var(--warning);" id="scheduledCountInfo">0</div>
+                        <div style="color: var(--gray-600); font-size: 13px;">درس‌های زمان‌بندی شده</div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+        <div class="container">
+            <p>© ۱۴۰۵ · سامانه برنامه‌ریزی کلاس‌ها</p>
+        </div>
+    </footer>
+
+    <!-- کتابخانه‌ها -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

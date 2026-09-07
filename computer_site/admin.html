@@ -169,6 +169,34 @@
                 <div id="fullWeekStatus" class="status-message"></div>
             </section>
 
+            <!-- ===== بخش پاک کردن برنامه‌ریزی ===== -->
+            <section class="admin-card full-width" style="border: 2px solid var(--danger); background: #fff5f5;">
+                <h2><i class="fas fa-trash-alt" style="color: var(--danger);"></i> پاک کردن برنامه‌ریزی</h2>
+                    <p class="help-text" style="color: var(--danger);">
+                        ⚠️ با کلیک روی این دکمه، <strong>همه درس‌ها و برنامه زمان‌بندی</strong> حذف میشن. کلاس‌ها باقی می‌مونن.
+                    </p>
+            <button onclick="system.clearAllCourses()" class="btn btn-danger" style="width: 100%; height: 48px; font-size: 16px;">
+                <i class="fas fa-trash-alt"></i> پاک کردن همه درس‌ها و برنامه‌ریزی
+            </button>
+                <div id="clearStatus" class="status-message"></div>
+            </section>
+
+            <section class="admin-card full-width" style="border: 2px solid var(--primary); background: #f0f4ff;">
+                <h2><i class="fas fa-database" style="color: var(--primary);"></i> پشتیبان‌گیری و بازیابی</h2>
+                    <p class="help-text">
+                         از داده‌های خود پشتیبان بگیرید یا پشتیبان قبلی را بازیابی کنید.
+                    </p>
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <button onclick="system.backupData()" class="btn btn-primary" style="flex:1; min-width:150px; height:44px; font-size:14px;">
+                        <i class="fas fa-download"></i> 📥 گرفتن پشتیبان
+                    </button>
+                    <button onclick="system.restoreBackup()" class="btn btn-success" style="flex:1; min-width:150px; height:44px; font-size:14px; background:#4CAF50; color:white; border:none; border-radius:8px; cursor:pointer;">
+                    <i class="fas fa-upload"></i> 📤 بازیابی پشتیبان
+                    </button>
+                </div>
+                <div id="backupStatus" class="status-message"></div>
+            </section>
+
             <!-- ===== بخش 6: اطلاعات سیستم ===== -->
             <section class="admin-card full-width">
                 <h2><i class="fas fa-chart-pie" style="color: var(--secondary);"></i> اطلاعات سیستم</h2>

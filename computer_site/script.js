@@ -1,5 +1,5 @@
 // ============================================
-// سامانه برنامه‌ریزی کلاس‌ها - نسخه نهایی
+// سامانه برنامه‌ریزی کلاس‌ها - نسخه نهایی با ساعت پویا
 // ============================================
 
 var system = null;
@@ -8,9 +8,10 @@ function SchedulingSystem() {
     this.rooms = [];
     this.courses = [];
     this.schedule = [];
-    this.timeSlots = ['08:00-10:00', '10:00-12:00', '13:00-15:00', '15:00-17:00'];
+    
+    // ===== ساعت‌ها حذف شدن - الان پویا هستن =====
     this.days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سهشنبه', 'چهارشنبه'];
-    this.filters = { course: '', teacher: '', day: 'all', time: 'all', room: '' };
+    this.filters = { course: '', teacher: '', day: 'all', time: '', room: '' };
     this.loadData();
     this.renderAll();
 }
@@ -40,6 +41,27 @@ SchedulingSystem.prototype.loadData = function() {
     } catch (e) {
         console.error('خطا در بارگذاری:', e);
     }
+};
+
+// ============================================
+// دریافت ساعت‌های پویا از درس‌ها
+// ============================================
+
+SchedulingSystem.prototype.getTimeSlots = function() {
+    var slots = [];
+    for (var i = 0; i < this.courses.length; i++) {
+        var time = this.courses[i].time;
+        if (time && slots.indexOf(time) === -1) {
+            slots.push(time);
+        }
+    }
+    // مرتب‌سازی بر اساس ساعت شروع
+    slots.sort(function(a, b) {
+        var hourA = parseInt(a.split(':')[0]);
+        var hourB = parseInt(b.split(':')[0]);
+        return hourA - hourB;
+    });
+    return slots;
 };
 
 // ============================================
@@ -100,9 +122,8 @@ SchedulingSystem.prototype.deleteRoom = function(id) {
 };
 
 // ============================================
-// مدیریت درس‌ها
+// مدیریت درس‌ها (با ساعت متنی)
 // ============================================
-
 SchedulingSystem.prototype.addCourse = function(event) {
     event.preventDefault();
     
@@ -110,9 +131,9 @@ SchedulingSystem.prototype.addCourse = function(event) {
     var teacherInput = document.getElementById('teacherName');
     var studentInput = document.getElementById('studentCount');
     var daySelect = document.getElementById('courseDay');
-    var timeSelect = document.getElementById('courseTime');
+    var timeInput = document.getElementById('courseTime');
     
-    if (!nameInput || !teacherInput || !studentInput || !daySelect || !timeSelect) {
+    if (!nameInput || !teacherInput || !studentInput || !daySelect || !timeInput) {
         this.showNotif('خطا در فرم! لطفاً صفحه را رفرش کنید.', 'error');
         return;
     }
@@ -121,7 +142,7 @@ SchedulingSystem.prototype.addCourse = function(event) {
     var teacher = teacherInput.value.trim();
     var studentCount = parseInt(studentInput.value);
     var day = daySelect.value;
-    var time = timeSelect.value;
+    var time = timeInput.value.trim();
     
     if (!name) {
         this.showNotif('لطفاً نام درس را وارد کنید.', 'error');
@@ -144,7 +165,7 @@ SchedulingSystem.prototype.addCourse = function(event) {
     }
     
     if (!time) {
-        this.showNotif('لطفاً ساعت را انتخاب کنید.', 'error');
+        this.showNotif('لطفاً ساعت را وارد کنید.', 'error');
         return;
     }
     
@@ -239,6 +260,269 @@ SchedulingSystem.prototype.deleteCourse = function(id) {
     this.renderAll();
     this.showNotif('درس حذف شد.');
 };
+// ============================================
+// تغییر دستی کلاس با قابلیت تغییر روز و ساعت
+// ============================================
+
+SchedulingSystem.prototype.showChangeRoomModal = function(courseId) {
+    var course = null;
+    for (var i = 0; i < this.courses.length; i++) {
+        if (this.courses[i].id === courseId) {
+            course = this.courses[i];
+            break;
+        }
+    }
+    if (!course) {
+        this.showNotif('درس پیدا نشد!', 'error');
+        return;
+    }
+    
+    // ساخت مودال با قابلیت جستجو
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    
+    var content = document.createElement('div');
+    content.style.cssText = 'background:white;padding:30px;border-radius:12px;max-width:600px;width:95%;max-height:85vh;overflow-y:auto;';
+    
+    var html = '<h3 style="margin-bottom:15px;">🔄 تغییر اطلاعات درس</h3>';
+    html += '<div style="background:#f5f5f5;padding:12px;border-radius:8px;margin-bottom:15px;">';
+    html += '<p style="margin:5px 0;"><strong>درس:</strong> ' + course.name + '</p>';
+    html += '<p style="margin:5px 0;"><strong>استاد:</strong> ' + course.teacher + '</p>';
+    html += '<p style="margin:5px 0;"><strong>دانشجویان:</strong> ' + course.studentCount + ' نفر</p>';
+    html += '</div>';
+    
+    // ===== تغییر روز =====
+    html += '<div class="form-group" style="margin-bottom:12px;">';
+    html += '<label style="display:block;font-weight:bold;margin-bottom:4px;">روز جدید</label>';
+    html += '<select id="newDay" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;">';
+    for (var d = 0; d < this.days.length; d++) {
+        var selected = (this.days[d] === course.day) ? 'selected' : '';
+        html += '<option value="' + this.days[d] + '" ' + selected + '>' + this.days[d] + '</option>';
+    }
+    html += '</select>';
+    html += '</div>';
+    
+    // ===== تغییر ساعت =====
+    html += '<div class="form-group" style="margin-bottom:12px;">';
+    html += '<label style="display:block;font-weight:bold;margin-bottom:4px;">ساعت جدید</label>';
+    html += '<input type="text" id="newTime" value="' + course.time + '" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;" placeholder="مثال: 08:00-10:00">';
+    html += '</div>';
+    
+    // ===== جستجوی کلاس =====
+    html += '<div class="form-group" style="margin-bottom:12px;">';
+    html += '<label style="display:block;font-weight:bold;margin-bottom:4px;">🔍 جستجوی کلاس</label>';
+    html += '<input type="text" id="roomSearch" onkeyup="system.filterRoomsInModal()" style="width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:14px;" placeholder="نام کلاس را جستجو کنید...">';
+    html += '</div>';
+    
+    // ===== لیست کلاس‌ها =====
+    html += '<div id="roomListModal" style="max-height:250px;overflow-y:auto;border:1px solid #eee;border-radius:6px;padding:5px;">';
+    
+    var currentRoomId = course.roomId;
+    for (var i = 0; i < this.rooms.length; i++) {
+        var room = this.rooms[i];
+        var isCurrent = (room.id === currentRoomId);
+        var isAvailable = (room.capacity >= course.studentCount);
+        
+        // چک کردن تداخل
+        var hasConflict = false;
+        var newDay = course.day;
+        var newTime = course.time;
+        
+        for (var j = 0; j < this.schedule.length; j++) {
+            var item = this.schedule[j];
+            if (item.courseId === courseId) continue;
+            if (item.day === newDay && item.timeSlot === newTime && item.roomId === room.id) {
+                hasConflict = true;
+                break;
+            }
+        }
+        var statusText = '';
+        var statusColor = '';
+        if (isCurrent) {
+            statusText = '✅ کلاس فعلی';
+            statusColor = '#4CAF50';
+        } else if (hasConflict) {
+            statusText = '❌ تداخل دارد';
+            statusColor = '#f44336';
+        } else if (!isAvailable) {
+            statusText = '⚠️ ظرفیت کافی نیست';
+            statusColor = '#ff9800';
+        } else {
+            statusText = '✅ قابل انتخاب';
+            statusColor = '#2196F3';
+        }
+        
+        var isDisabled = (isCurrent || hasConflict || !isAvailable) ? 'disabled' : '';
+        var bgColor = isCurrent ? '#e8f5e9' : (hasConflict ? '#ffebee' : 'white');
+        
+        html += '<div class="room-item-modal" data-name="' + room.name.toLowerCase() + '" style="display:block;padding:8px 12px;margin-bottom:4px;border-radius:6px;background:' + bgColor + ';border:1px solid ' + (isCurrent ? '#4CAF50' : (hasConflict ? '#f44336' : '#eee')) + ';">';
+        html += '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">';
+        html += '<span><strong>' + room.name + '</strong> (ظرفیت: ' + room.capacity + ')</span>';
+        html += '<span style="color:' + statusColor + ';font-size:13px;">' + statusText + '</span>';
+        if (!isDisabled && !isCurrent) {
+            html += '<button onclick="system.changeCourseRoom(' + courseId + ', ' + room.id + ')" style="padding:4px 14px;border:none;border-radius:4px;background:#2196F3;color:white;cursor:pointer;font-size:13px;">انتخاب</button>';
+        }
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    
+    html += '<hr style="margin:15px 0;">';
+    html += '<div style="display:flex;gap:10px;justify-content:flex-end;">';
+    html += '<button onclick="system.closeModal(this)" style="padding:8px 20px;border:none;border-radius:6px;background:#f44336;color:white;cursor:pointer;">بستن</button>';
+    html += '</div>';
+    
+    content.innerHTML = html;
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // بستن با کلیک بیرون
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+    
+    // ذخیره مرجع مودال برای دسترسی در توابع دیگر
+    this._currentModal = modal;
+};
+
+// ============================================
+// فیلتر کلاس‌ها در مودال
+// ============================================
+
+SchedulingSystem.prototype.filterRoomsInModal = function() {
+    var searchInput = document.getElementById('roomSearch');
+    if (!searchInput) return;
+    
+    var searchText = searchInput.value.toLowerCase();
+    var items = document.querySelectorAll('.room-item-modal');
+    
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        var name = item.getAttribute('data-name') || '';
+        if (name.includes(searchText)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    }
+};
+
+// ============================================
+// بستن مودال
+// ============================================
+
+SchedulingSystem.prototype.closeModal = function(button) {
+    var modal = button.closest('div[style*="position:fixed"][style*="z-index:9999"]');
+    if (modal) {
+        modal.remove();
+    }
+};
+
+// ============================================
+// تغییر کلاس با قابلیت تغییر روز و ساعت
+// ============================================
+
+SchedulingSystem.prototype.changeCourseRoom = function(courseId, newRoomId) {
+    // پیدا کردن درس
+    var course = null;
+    for (var i = 0; i < this.courses.length; i++) {
+        if (this.courses[i].id === courseId) {
+            course = this.courses[i];
+            break;
+        }
+    }
+    if (!course) {
+        this.showNotif('درس پیدا نشد!', 'error');
+        return;
+    }
+    
+    // گرفتن روز و ساعت جدید از مودال
+    var newDaySelect = document.getElementById('newDay');
+    var newTimeInput = document.getElementById('newTime');
+    
+    var newDay = newDaySelect ? newDaySelect.value : course.day;
+    var newTime = newTimeInput ? newTimeInput.value.trim() : course.time;
+    
+    if (!newDay || !newTime) {
+        this.showNotif('لطفاً روز و ساعت را وارد کنید!', 'error');
+        return;
+    }
+    
+    // پیدا کردن کلاس جدید
+    var newRoom = null;
+    for (var i = 0; i < this.rooms.length; i++) {
+        if (this.rooms[i].id === newRoomId) {
+            newRoom = this.rooms[i];
+            break;
+        }
+    }
+    if (!newRoom) {
+        this.showNotif('کلاس پیدا نشد!', 'error');
+        return;
+    }
+    
+    // ===== چک کردن ظرفیت =====
+    if (newRoom.capacity < course.studentCount) {
+        this.showNotif('❌ ظرفیت کلاس "' + newRoom.name + '" برای ' + course.studentCount + ' دانشجو کافی نیست!', 'error');
+        return;
+    }
+    
+    // ===== چک کردن تداخل =====
+    var hasConflict = false;
+    for (var i = 0; i < this.schedule.length; i++) {
+        var item = this.schedule[i];
+        if (item.courseId === courseId) continue;
+        if (item.day === newDay && item.timeSlot === newTime && item.roomId === newRoomId) {
+            hasConflict = true;
+            break;
+        }
+    }
+    
+    if (hasConflict) {
+        this.showNotif('❌ کلاس "' + newRoom.name + '" در روز ' + newDay + ' ساعت ' + newTime + ' قبلاً رزرو شده است!', 'error');
+        return;
+    }
+    
+    // ===== اعمال تغییرات =====
+    var oldDay = course.day;
+    var oldTime = course.time;
+    var oldRoomName = course.roomName;
+    
+    course.day = newDay;
+    course.time = newTime;
+    course.roomId = newRoomId;
+    course.roomName = newRoom.name;
+    
+    // پیدا کردن آیتم در schedule
+    var scheduleItem = null;
+    for (var i = 0; i < this.schedule.length; i++) {
+        if (this.schedule[i].courseId === courseId) {
+            scheduleItem = this.schedule[i];
+            break;
+        }
+    }
+    
+    if (scheduleItem) {
+        scheduleItem.day = newDay;
+        scheduleItem.timeSlot = newTime;
+        scheduleItem.roomId = newRoomId;
+        scheduleItem.roomName = newRoom.name;
+    }
+    
+    this.saveData();
+    this.renderAll();
+    
+    // بستن مودال
+    var modal = document.querySelector('div[style*="position:fixed"][style*="z-index:9999"]');
+    if (modal) {
+        modal.remove();
+    }
+    
+    this.showNotif('✅ تغییرات با موفقیت اعمال شد! (' + oldRoomName + ' → ' + newRoom.name + ')');
+};
 
 // ============================================
 // برنامه‌ریزی کامل هفته
@@ -247,8 +531,9 @@ SchedulingSystem.prototype.deleteCourse = function(id) {
 SchedulingSystem.prototype.planFullWeek = function() {
     var status = document.getElementById('fullWeekStatus');
     this.showStatus('در حال برنامه‌ریزی...', 'info', status);
-    if (this.rooms.length < 40) {
-        this.showStatus('به حداقل 40 کلاس نیاز دارید! (' + this.rooms.length + ' کلاس موجود)', 'error', status);
+    
+    if (this.rooms.length < 200) {
+        this.showStatus('به حداقل 200 کلاس نیاز دارید! (' + this.rooms.length + ' کلاس موجود)', 'error', status);
         return;
     }
     
@@ -310,13 +595,23 @@ SchedulingSystem.prototype.filterCourses = function() {
     var courseInput = document.getElementById('filterCourse');
     var teacherInput = document.getElementById('filterTeacher');
     var daySelect = document.getElementById('filterDay');
-    var timeSelect = document.getElementById('filterTime');
+    var timeSelect = document.getElementById('filterTime');  // تغییر به select
     var roomInput = document.getElementById('filterRoom');
     
     if (courseInput) this.filters.course = courseInput.value.toLowerCase();
     if (teacherInput) this.filters.teacher = teacherInput.value.toLowerCase();
     if (daySelect) this.filters.day = daySelect.value;
-    if (timeSelect) this.filters.time = timeSelect.value;
+    
+    // ===== اصلاح فیلتر ساعت برای select =====
+    if (timeSelect) {
+        var timeValue = timeSelect.value;
+        if (timeValue === 'all' || timeValue === '') {
+            this.filters.time = '';
+        } else {
+            this.filters.time = timeValue;
+        }
+    }
+    
     if (roomInput) this.filters.room = roomInput.value.toLowerCase();
     this.renderSchedule();
 };
@@ -325,16 +620,16 @@ SchedulingSystem.prototype.resetFilters = function() {
     var courseInput = document.getElementById('filterCourse');
     var teacherInput = document.getElementById('filterTeacher');
     var daySelect = document.getElementById('filterDay');
-    var timeSelect = document.getElementById('filterTime');
+    var timeSelect = document.getElementById('filterTime');  // تغییر به select
     var roomInput = document.getElementById('filterRoom');
     
     if (courseInput) courseInput.value = '';
     if (teacherInput) teacherInput.value = '';
     if (daySelect) daySelect.value = 'all';
-    if (timeSelect) timeSelect.value = 'all';
+    if (timeSelect) timeSelect.value = 'all';  // برگرداندن به 'all'
     if (roomInput) roomInput.value = '';
     
-    this.filters = { course: '', teacher: '', day: 'all', time: 'all', room: '' };
+    this.filters = { course: '', teacher: '', day: 'all', time: '', room: '' };
     this.renderSchedule();
 };
 
@@ -382,26 +677,34 @@ SchedulingSystem.prototype.updateElement = function(id, value) {
     var el = document.getElementById(id);
     if (el) el.textContent = value;
 };
-
 SchedulingSystem.prototype.renderSchedule = function() {
     var container = document.getElementById('scheduleTable');
     if (!container) return;
     
+    // ===== ساعت‌های پویا از درس‌ها =====
+    var timeSlots = this.getTimeSlots();
+    
     var filtered = [];
     for (var i = 0; i < this.schedule.length; i++) filtered.push(this.schedule[i]);
     
-    if (this.filters.day !== 'all') {
-        var temp = [];
-        for (var i = 0; i < filtered.length; i++) {
-            if (filtered[i].day === this.filters.day) temp.push(filtered[i]);
+    // ===== فیلتر ساعت (برای select) =====
+    if (this.filters.time) {
+    var temp = [];
+    for (var i = 0; i < filtered.length; i++) {
+        // مقایسه دقیق با مقدار انتخاب شده
+        if (filtered[i].timeSlot === this.filters.time) {
+            temp.push(filtered[i]);
+           }
         }
         filtered = temp;
     }
     
-    if (this.filters.time !== 'all') {
+    if (this.filters.time) {
         var temp = [];
         for (var i = 0; i < filtered.length; i++) {
-            if (filtered[i].timeSlot === this.filters.time) temp.push(filtered[i]);
+            if (filtered[i].timeSlot && filtered[i].timeSlot.toLowerCase().includes(this.filters.time)) {
+                temp.push(filtered[i]);
+            }
         }
         filtered = temp;
     }
@@ -415,9 +718,9 @@ SchedulingSystem.prototype.renderSchedule = function() {
             }
             if (!course) continue;
             var match = true;
-            if (this.filters.course && !course.name.includes(this.filters.course)) match = false;
-            if (this.filters.teacher && !course.teacher.includes(this.filters.teacher)) match = false;
-            if (this.filters.room && filtered[i].roomName && !filtered[i].roomName.includes(this.filters.room)) match = false;
+            if (this.filters.course && !course.name.toLowerCase().includes(this.filters.course)) match = false;
+            if (this.filters.teacher && !course.teacher.toLowerCase().includes(this.filters.teacher)) match = false;
+            if (this.filters.room && filtered[i].roomName && !filtered[i].roomName.toLowerCase().includes(this.filters.room)) match = false;
             if (match) temp.push(filtered[i]);
         }
         filtered = temp;
@@ -426,6 +729,7 @@ SchedulingSystem.prototype.renderSchedule = function() {
     var countEl = document.getElementById('filterCount');
     if (countEl) countEl.textContent = filtered.length + ' نتیجه';
     
+    // ===== ساخت جدول با ساعت‌های پویا =====
     var html = '<table class="schedule-table">';
     html += '<thead><tr><th>زمان</th>';
     for (var d = 0; d < this.days.length; d++) {
@@ -435,39 +739,44 @@ SchedulingSystem.prototype.renderSchedule = function() {
     }
     html += '</tr></thead><tbody>';
     
-    for (var t = 0; t < this.timeSlots.length; t++) {
-        var time = this.timeSlots[t];
-        html += '<tr><td class="time-label">' + time + '</td>';
-        for (var d2 = 0; d2 < this.days.length; d2++) {
-            var dayName = this.days[d2];
-            var items = [];
-            for (var s = 0; s < filtered.length; s++) {
-                if (filtered[s].day === dayName && filtered[s].timeSlot === time) items.push(filtered[s]);
-            }
-            if (items.length > 0) {
-                html += '<td class="schedule-cell class">';
-                for (var itemIdx = 0; itemIdx < items.length; itemIdx++) {
-                    var item = items[itemIdx];
-                    var course = null;
-                    for (var c = 0; c < this.courses.length; c++) {
-                        if (this.courses[c].id === item.courseId) { course = this.courses[c]; break; }
-                    }
-                    if (course) {
-                        html += '<div class="schedule-item">';
-                        html += '<span class="course-name">' + course.name + '</span>';
-                        html += '<span class="course-meta">استاد: ' + course.teacher + '</span>';
-                        html += '<span class="course-meta">دانشجویان: ' + course.studentCount + ' نفر</span>';
-                        html += '<span class="course-meta">کلاس: ' + (item.roomName || 'نامشخص') + '</span>';
-                        html += '</div>';
-                    }
+    if (timeSlots.length === 0) {
+        html += '<tr><td colspan="' + (this.days.length + 1) + '" style="text-align:center;padding:30px;color:#999;">هیچ ساعتی ثبت نشده است</td></tr>';
+    } else {
+        for (var t = 0; t < timeSlots.length; t++) {
+            var time = timeSlots[t];
+            html += '<tr><td class="time-label">' + time + '</td>';
+            for (var d2 = 0; d2 < this.days.length; d2++) {
+                var dayName = this.days[d2];
+                var items = [];
+                for (var s = 0; s < filtered.length; s++) {
+                    if (filtered[s].day === dayName && filtered[s].timeSlot === time) items.push(filtered[s]);
                 }
-                html += '</td>';
-            } else {
-                html += '<td class="schedule-cell empty"></td>';
+                if (items.length > 0) {
+                    html += '<td class="schedule-cell class">';
+                    for (var itemIdx = 0; itemIdx < items.length; itemIdx++) {
+                        var item = items[itemIdx];
+                        var course = null;
+                        for (var c = 0; c < this.courses.length; c++) {
+                            if (this.courses[c].id === item.courseId) { course = this.courses[c]; break; }
+                        }
+                        if (course) {
+                            html += '<div class="schedule-item">';
+                            html += '<span class="course-name">' + course.name + '</span>';
+                            html += '<span class="course-meta">استاد: ' + course.teacher + '</span>';
+                            html += '<span class="course-meta">دانشجویان: ' + course.studentCount + ' نفر</span>';
+                            html += '<span class="course-meta">کلاس: ' + (item.roomName || 'نامشخص') + '</span>';
+                            html += '</div>';
+                        }
+                    }
+                    html += '</td>';
+                } else {
+                    html += '<td class="schedule-cell empty"></td>';
+                }
             }
+            html += '</tr>';
         }
-        html += '</tr>';
     }
+    
     html += '</tbody></table>';
     
     if (this.schedule.length === 0) {
@@ -526,6 +835,11 @@ SchedulingSystem.prototype.renderCoursesList = function() {
         }
         html += '</div>';
         html += '<div class="actions">';
+        
+        if (scheduled) {
+            html += '<button onclick="system.showChangeRoomModal(' + course.id + ')" class="btn btn-primary btn-sm" style="background:#ff9800;border-color:#ff9800;">تغییر کلاس</button>';
+        }
+        
         html += '<button onclick="system.deleteCourse(' + course.id + ')" class="btn btn-danger btn-sm">حذف</button>';
         html += '</div>';
         html += '</div>';
@@ -578,9 +892,6 @@ SchedulingSystem.prototype.importRoomsFromExcelFile = function() {
             var workbook = XLSX.read(data, { type: 'array' });
             var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             var json = XLSX.utils.sheet_to_json(firstSheet);
-            
-            console.log('📊 داده‌های کلاس:', json);
-            console.log('📋 ستون‌ها:', Object.keys(json[0] || {}));
             
             if (json.length === 0) {
                 self.showImportStatus('فایل خالی است.', 'error');
@@ -646,10 +957,6 @@ SchedulingSystem.prototype.importCoursesFromExcelFile = function() {
             var workbook = XLSX.read(data, { type: 'array' });
             var firstSheet = workbook.Sheets[workbook.SheetNames[0]];
             var json = XLSX.utils.sheet_to_json(firstSheet);
-            
-            console.log('📊 داده‌های درس:', json);
-            console.log('📋 ستون‌ها:', Object.keys(json[0] || {}));
-            
             if (json.length === 0) {
                 self.showImportCoursesStatus('فایل خالی است.', 'error');
                 return;
@@ -665,7 +972,7 @@ SchedulingSystem.prototype.importCoursesFromExcelFile = function() {
                 var name = row['نام درس'] || row['درس'] || row['عنوان درس'] || row['course'] || row['name'] || '';
                 var teacher = row['استاد'] || row['نام استاد'] || row['teacher'] || row['Teacher'] || '';
                 var count = parseInt(row['تعداد دانشجویان'] || row['دانشجو'] || row['student'] || row['students'] || 0);
-                var day = row['روز'] || row['روز هفته']|| row['day'] || '';
+                var day = row['روز'] || row['روز هفته'] || row['day'] || '';
                 var time = row['ساعت'] || row['زمان'] || row['time'] || row['ساعت شروع'] || '';
                 
                 name = String(name).trim();
@@ -684,12 +991,6 @@ SchedulingSystem.prototype.importCoursesFromExcelFile = function() {
                     if (self.days[d] === day) { validDay = true; break; }
                 }
                 if (!validDay) { errorCount++; errors.push('ردیف ' + (i+1) + ': روز "' + day + '" معتبر نیست'); continue; }
-                
-                var validTime = false;
-                for (var t = 0; t < self.timeSlots.length; t++) {
-                    if (self.timeSlots[t] === time) { validTime = true; break; }
-                }
-                if (!validTime) { errorCount++; errors.push('ردیف ' + (i+1) + ': ساعت "' + time + '" معتبر نیست'); continue; }
                 
                 var room = self.findBestRoom(count, day, time);
                 if (!room) {
@@ -758,7 +1059,7 @@ SchedulingSystem.prototype.downloadSampleExcel = function(type) {
     } else {
         data = [
             { 'نام درس': 'ریاضی ۱', 'استاد': 'دکتر احمدی', 'تعداد دانشجویان': '۳۵', 'روز': 'شنبه', 'ساعت': '08:00-10:00' },
-            { 'نام درس': 'فیزیک ۱', 'استاد': 'دکتر کریمی', 'تعداد دانشجویان': '۴۰', 'روز': 'شنبه', 'ساعت': '08:00-10:00' }
+            { 'نام درس': 'فیزیک ۱', 'استاد': 'دکتر کریمی', 'تعداد دانشجویان': '۴۰', 'روز': 'شنبه', 'ساعت': '10:00-14:00' }
         ];
         filename = 'نمونه_درس‌ها.xlsx';
     }
@@ -793,30 +1094,403 @@ SchedulingSystem.prototype.showImportCoursesStatus = function(message, type) {
 };
 
 // ============================================
-// خروجی PDF
+// خروجی PDF با تاخیر برای رندر کامل
 // ============================================
 
 SchedulingSystem.prototype.exportToPDF = function() {
-    if (typeof html2pdf === 'undefined') {
-        this.showNotif('لطفاً کتابخانه html2pdf را بارگذاری کنید.', 'error');
+    // ===== تشخیص jsPDF =====
+    var PDF = null;
+    if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') {
+        PDF = window.jspdf.jsPDF;
+    } else if (typeof window.jsPDF !== 'undefined') {
+        PDF = window.jsPDF;
+    } else if (typeof jsPDF !== 'undefined') {
+        PDF = jsPDF;
+    } else if (typeof jspdf !== 'undefined' && typeof jspdf.jsPDF !== 'undefined') {
+        PDF = jspdf.jsPDF;
+    } else if (typeof jspdf !== 'undefined' && typeof jspdf.default !== 'undefined') {
+        PDF = jspdf.default;
+    }
+    
+    if (typeof html2canvas === 'undefined') {
+        this.showNotif('❌ کتابخانه html2canvas پیدا نشد!', 'error');
         return;
     }
-    var element = document.getElementById('scheduleTable');
-    if (!element) return;
-    var opt = {
-        margin: 10,
-        filename: 'برنامه_کلاس‌ها_' + new Date().toLocaleDateString('fa-IR') + '.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' }
-    };
-    html2pdf().from(element).set(opt).save();
-    this.showNotif('فایل PDF با موفقیت ایجاد شد!');
+    if (!PDF) {
+        this.showNotif('❌ کتابخانه jsPDF پیدا نشد!', 'error');
+        return;
+    }
+    
+    var self = this;
+    this.showNotif('⏳ در حال آماده‌سازی PDF...', 'info');
+    
+    // ===== آماده‌سازی نام فایل =====
+    var hasFilter = this.filters.course || this.filters.teacher  
+                this.filters.day !== 'all' || this.filters.time  
+                this.filters.room;
+    
+    var filename = 'برنامه_کلاس‌ها';
+    if (hasFilter) {
+        var parts = [];
+        if (this.filters.course) parts.push(this.filters.course);
+        if (this.filters.teacher) parts.push(this.filters.teacher);
+        if (this.filters.day !== 'all') parts.push(this.filters.day);
+        if (this.filters.time) parts.push(this.filters.time);
+        if (this.filters.room) parts.push('کلاس_' + this.filters.room);
+        filename += '_' + parts.join('_');
+    }
+    filename += '_' + new Date().toLocaleDateString('fa-IR') + '.pdf';
+    
+    // ===== گرفتن داده‌های فیلتر شده =====
+    var filteredSchedule = [];
+    for (var i = 0; i < this.schedule.length; i++) {
+        filteredSchedule.push(this.schedule[i]);
+    }
+    
+    if (this.filters.day !== 'all') {
+        var temp = [];
+        for (var i = 0; i < filteredSchedule.length; i++) {
+            if (filteredSchedule[i].day === this.filters.day) temp.push(filteredSchedule[i]);
+        }
+        filteredSchedule = temp;
+    }
+    
+    if (this.filters.time) {
+        var temp = [];
+        for (var i = 0; i < filteredSchedule.length; i++) {
+            if (filteredSchedule[i].timeSlot && filteredSchedule[i].timeSlot.toLowerCase().includes(this.filters.time)) {
+                temp.push(filteredSchedule[i]);
+            }
+        }
+        filteredSchedule = temp;
+    }
+    
+    if (this.filters.course || this.filters.teacher || this.filters.room) {
+        var temp = [];
+        for (var i = 0; i < filteredSchedule.length; i++) {
+            var course = null;
+            for (var j = 0; j < this.courses.length; j++) {
+                if (this.courses[j].id === filteredSchedule[i].courseId) { course = this.courses[j]; break; }
+            }
+            if (!course) continue;
+            var match = true;
+            if (this.filters.course && !course.name.toLowerCase().includes(this.filters.course)) match = false;
+            if (this.filters.teacher && !course.teacher.toLowerCase().includes(this.filters.teacher)) match = false;
+            if (this.filters.room && filteredSchedule[i].roomName && !filteredSchedule[i].roomName.toLowerCase().includes(this.filters.room)) match = false;
+            if (match) temp.push(filteredSchedule[i]);
+        }
+        filteredSchedule = temp;
+    }
+    
+    // ===== گرفتن ساعت‌ها از filteredSchedule =====
+    var timeSlots = [];
+    for (var i = 0; i < filteredSchedule.length; i++) {
+        var time = filteredSchedule[i].timeSlot;
+        if (time && timeSlots.indexOf(time) === -1) {
+            timeSlots.push(time);
+        }
+    }
+    
+    // اگه هیچ ساعتی در filteredSchedule نبود، از همه schedule بگیر
+    if (timeSlots.length === 0) {
+        for (var i = 0; i < this.schedule.length; i++) {
+            var time = this.schedule[i].timeSlot;
+            if (time && timeSlots.indexOf(time) === -1) {
+                timeSlots.push(time);
+            }
+        }
+    }
+    
+    // اگه باز هم هیچی نبود، از courses بگیر
+    if (timeSlots.length === 0) {
+        for (var i = 0; i < this.courses.length; i++) {
+            var time = this.courses[i].time;
+            if (time && timeSlots.indexOf(time) === -1) {
+                timeSlots.push(time);
+            }
+        }
+    }
+    
+    // مرتب‌سازی ساعت‌ها
+    timeSlots.sort(function(a, b) {
+        var hourA = parseInt(a.split(':')[0]);
+        var hourB = parseInt(b.split(':')[0]);
+        return hourA - hourB;
+    });
+    
+    // ===== ساخت جدول HTML برای PDF با ساعت‌ها =====
+    var tableHtml = '<table style="width:100%;direction:rtl;border-collapse:collapse;font-family:Tahoma,Arial,sans-serif;font-size:13px;">';
+    
+    // هدر جدول (روزها)
+    tableHtml += '<thead><tr>';
+    tableHtml += '<th style="border:1px solid #333;padding:10px 12px;text-align:center;background:#2c3e50;color:white;font-weight:bold;font-size:14px;">زمان</th>';
+    for (var d = 0; d < this.days.length; d++) {
+        var day = this.days[d];
+        tableHtml += '<th style="border:1px solid #333;padding:10px 12px;text-align:center;background:#2c3e50;color:white;font-weight:bold;font-size:14px;">' + day + '</th>';
+    }
+    tableHtml += '</tr></thead>';
+    
+    // بدنه جدول
+    tableHtml += '<tbody>';
+    
+    if (timeSlots.length === 0) {
+        tableHtml += '<tr><td colspan="' + (this.days.length + 1) + '" style="text-align:center;padding:40px;border:1px solid #333;font-size:16px;color:#999;">هیچ ساعتی ثبت نشده است</td></tr>';
+    } else {
+        for (var t = 0; t < timeSlots.length; t++) {
+            var time = timeSlots[t];
+            
+            // سطر ساعت
+            tableHtml += '<tr>';
+            tableHtml += '<td style="border:1px solid #333;padding:10px 12px;text-align:center;background:#ecf0f1;font-weight:bold;font-size:13px;">' + time + '</td>';
+            
+            for (var d2 = 0; d2 < this.days.length; d2++) {
+                var dayName = this.days[d2];
+                
+                // پیدا کردن درس‌های این روز و ساعت
+                var items = [];
+                for (var s = 0; s < filteredSchedule.length; s++) {
+                    if (filteredSchedule[s].day === dayName && filteredSchedule[s].timeSlot === time) {
+                        items.push(filteredSchedule[s]);
+                    }
+                }
+                
+                if (items.length > 0) {
+                    tableHtml += '<td style="border:1px solid #333;padding:8px 10px;text-align:center;background:#dff9fb;vertical-align:middle;">';
+                    for (var itemIdx = 0; itemIdx < items.length; itemIdx++) {
+                        var item = items[itemIdx];
+                        var course = null;
+                        for (var c = 0; c < this.courses.length; c++) {
+                            if (this.courses[c].id === item.courseId) { course = this.courses[c]; break; }
+                        }
+                        if (course) {
+                            tableHtml += '<div style="margin-bottom:5px;padding:4px;border-bottom:1px dashed #b3d9f7;">';
+                            tableHtml += '<div style="font-weight:bold;font-size:14px;color:#1a237e;">' + course.name + '</div>';
+                            tableHtml += '<div style="font-size:12px;color:#555;">استاد: ' + course.teacher + '</div>';
+                            tableHtml += '<div style="font-size:12px;color:#555;">دانشجویان: ' + course.studentCount + ' نفر</div>';
+                            tableHtml += '<div style="font-size:12px;color:#555;">کلاس: ' + (item.roomName || 'نامشخص') + '</div>';
+                            tableHtml += '</div>';
+                        }
+                    }
+                    tableHtml += '</td>';
+                } else {
+                    tableHtml += '<td style="border:1px solid #333;padding:8px 10px;text-align:center;background:#f9f9f9;"></td>';
+                }
+            }
+            tableHtml += '</tr>';
+        }
+    }
+    
+    tableHtml += '</tbody></table>';
+    
+    // ===== ساخت wrapper =====
+    var wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:1100px;background:white;padding:30px;direction:rtl;font-family:Tahoma,Arial,sans-serif;';
+    
+    // عنوان
+    var title = document.createElement('h2');
+    title.style.cssText = 'text-align:center;margin-bottom:10px;color:#2c3e50;font-size:24px;';
+    title.textContent = '📋 برنامه هفتگی کلاس‌ها';
+    wrapper.appendChild(title);
+    
+    // تاریخ
+    var dateInfo = document.createElement('p');
+    dateInfo.style.cssText = 'text-align:center;margin-bottom:10px;color:#666;font-size:14px;';
+    dateInfo.textContent = 'تاریخ: ' + new Date().toLocaleDateString('fa-IR');
+    wrapper.appendChild(dateInfo);
+    
+    // فیلترها
+    if (hasFilter) {
+        var filterInfo = document.createElement('p');
+        filterInfo.style.cssText = 'text-align:center;margin-bottom:15px;color:#3498db;font-size:13px;';
+        var filterText = 'فیلترها: ';
+        if (this.filters.course) filterText += 'درس: ' + this.filters.course + ' | ';
+        if (this.filters.teacher) filterText += 'استاد: ' + this.filters.teacher + ' | ';
+        if (this.filters.day !== 'all') filterText += 'روز: ' + this.filters.day + ' | ';
+        if (this.filters.time) filterText += 'ساعت: ' + this.filters.time + ' | ';
+        if (this.filters.room) filterText += 'کلاس: ' + this.filters.room;
+        filterInfo.textContent = filterText;
+        wrapper.appendChild(filterInfo);
+    }
+    
+    // اضافه کردن جدول به wrapper
+    wrapper.innerHTML += tableHtml;
+    
+    document.body.appendChild(wrapper);
+    
+    // ===== گرفتن عکس و ساخت PDF =====
+    setTimeout(function() {
+        html2canvas(wrapper, {
+            scale: 2.5,
+            useCORS: true,
+            logging: false,
+            width: 1100,
+            height: wrapper.scrollHeight || 1500
+        }).then(function(canvas) {
+            var imgData = canvas.toDataURL('image/jpeg', 1.0);
+            
+            var pdf = new PDF({
+                orientation: 'landscape',
+                unit: 'mm',
+                format: 'a2'
+            });
+            
+            var pdfWidth = pdf.internal.pageSize.getWidth();
+            var pdfHeight = pdf.internal.pageSize.getHeight();
+            
+            var imgWidth = canvas.width;
+            var imgHeight = canvas.height;
+            var ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+            var finalWidth = imgWidth * ratio;
+            var finalHeight = imgHeight * ratio;
+            
+            pdf.addImage(imgData, 'JPEG', 0, 0, finalWidth, finalHeight);
+            pdf.save(filename);
+            
+            document.body.removeChild(wrapper);
+            self.showNotif('✅ فایل PDF با کیفیت بالا ایجاد شد!');
+        }).catch(function(err) {
+            console.error('خطا:', err);
+            document.body.removeChild(wrapper);
+            self.showNotif('❌ خطا در ایجاد PDF: ' + err.message, 'error');
+        });
+    }, 1500);
 };
+    
 
 // ============================================
 // راه‌اندازی
 // ============================================
+
+SchedulingSystem.prototype.clearAllCourses = function() {
+    if (!confirm('⚠️ آیا از پاک کردن همه درس‌ها و برنامه زمان‌بندی مطمئن هستید؟\n\nاین کار قابل بازگشت نیست!')) {
+        return;
+    }
+    
+    if (!confirm('‼️ تأیید نهایی: آیا مطمئن هستید که می‌خواهید همه درس‌ها را حذف کنید؟')) {
+        return;
+    }
+    
+    // ===== پاک کردن درس‌ها، برنامه و کلاس‌ها =====
+    this.courses = [];
+    this.schedule = [];
+    this.rooms = [];  // <--- این خط رو اضافه کنید
+    
+    this.saveData();
+    this.renderAll();
+    
+    var statusEl = document.getElementById('clearStatus');
+    if (statusEl) {
+        statusEl.textContent = '✅ همه کلاس‌ها، درس‌ها و برنامه زمان‌بندی با موفقیت پاک شدند!';
+        statusEl.className = 'status-message show success';
+        statusEl.style.display = 'block';
+    }
+    
+    this.showNotif('🗑️ همه کلاس‌ها، درس‌ها و برنامه پاک شدند!');
+};
+
+SchedulingSystem.prototype.backupData = function() {
+    try {
+        // ===== گرفتن همه داده‌ها =====
+        var data = {
+            rooms: this.rooms,
+            courses: this.courses,
+            schedule: this.schedule,
+            backupDate: new Date().toISOString(),
+            version: '1.0'
+        };
+        
+        // ===== تبدیل به JSON =====
+        var jsonData = JSON.stringify(data, null, 2);
+        var blob = new Blob([jsonData], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        
+        // ===== دانلود فایل =====
+        var a = document.createElement('a');
+        a.href = url;
+        var dateStr = new Date().toLocaleDateString('fa-IR').replace(/\//g, '-');
+        a.download = 'پشتیبان_برنامه_' + dateStr + '.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        // ===== نمایش پیام =====
+        var statusEl = document.getElementById('backupStatus');
+        if (statusEl) {
+            statusEl.textContent = '✅ پشتیبان با موفقیت ذخیره شد! تاریخ: ' + new Date().toLocaleDateString('fa-IR');
+            statusEl.className = 'status-message show success';
+            statusEl.style.display = 'block';
+        }
+        this.showNotif('📥 فایل پشتیبان با موفقیت دانلود شد!');
+    } catch (error) {
+        console.error('خطا در پشتیبان‌گیری:', error);
+        this.showNotif('❌ خطا در گرفتن پشتیبان', 'error');
+    }
+};
+
+SchedulingSystem.prototype.restoreBackup = function() {
+    try {
+        // ===== ایجاد input مخفی برای انتخاب فایل =====
+        var input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.json';
+        var self = this;
+        
+        input.onchange = function(e) {
+            var file = e.target.files[0];
+            if (!file) {
+                self.showNotif('⚠️ هیچ فایلی انتخاب نشد!', 'warning');
+                return;
+            }
+            
+            var reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    // ===== خواندن و解析 فایل =====
+                    var data = JSON.parse(e.target.result);
+                    
+                    // ===== اعتبارسنجی داده‌ها =====
+                    if (!data.rooms || !data.courses || !data.schedule) {
+                        self.showNotif('❌ فایل پشتیبان معتبر نیست!', 'error');
+                        return;
+                    }
+                    
+                    // ===== تأیید از کاربر =====
+                    if (!confirm('⚠️ آیا از بازیابی این پشتیبان مطمئن هستید؟\n\nداده‌های فعلی کاملاً جایگزین خواهند شد!')) {
+                        return;
+                    }
+                    
+                    // ===== جایگزینی داده‌ها =====
+                    self.rooms = data.rooms || [];
+                    self.courses = data.courses || [];
+                    self.schedule = data.schedule || [];
+                    
+                    // ===== ذخیره و به‌روزرسانی =====
+                    self.saveData();
+                    self.renderAll();
+                    
+                    var statusEl = document.getElementById('backupStatus');
+                    if (statusEl) {
+                        var dateStr = data.backupDate ? new Date(data.backupDate).toLocaleDateString('fa-IR') : 'نامشخص';
+                        statusEl.textContent = '✅ پشتیبان با موفقیت بازیابی شد! تاریخ پشتیبان: ' + dateStr;
+                        statusEl.className = 'status-message show success';
+                        statusEl.style.display = 'block';
+                    }
+                    self.showNotif('✅ پشتیبان با موفقیت بازیابی شد!');
+                } catch (error) {
+                    console.error('خطا در خواندن فایل:', error);
+                    self.showNotif('❌ خطا در خواندن فایل پشتیبان: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+        };
+        
+        input.click();
+    } catch (error) {
+        console.error('خطا در بازیابی:', error);
+        this.showNotif('❌ خطا در بازیابی پشتیبان', 'error');
+    }
+};
 
 document.addEventListener('DOMContentLoaded', function() {
     system = new SchedulingSystem();

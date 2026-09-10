@@ -9,7 +9,6 @@ function SchedulingSystem() {
     this.courses = [];
     this.schedule = [];
     
-    // ===== ساعت‌ها حذف شدن - الان پویا هستن =====
     this.days = ['شنبه', 'یکشنبه', 'دوشنبه', 'سهشنبه', 'چهارشنبه'];
     this.filters = { course: '', teacher: '', day: 'all', time: '', room: '' };
     this.loadData();
@@ -47,14 +46,9 @@ SchedulingSystem.prototype.loadData = function() {
 // دریافت ساعت‌های پویا از درس‌ها
 // ============================================
 
-// ============================================
-// دریافت ساعت‌های پویا از درس‌ها
-// ============================================
-
 SchedulingSystem.prototype.getTimeSlots = function() {
     var slots = [];
     
-    // ===== اول از schedule بگیر =====
     for (var i = 0; i < this.schedule.length; i++) {
         var time = this.schedule[i].timeSlot;
         if (time && slots.indexOf(time) === -1) {
@@ -62,7 +56,6 @@ SchedulingSystem.prototype.getTimeSlots = function() {
         }
     }
     
-    // ===== اگه schedule خالی بود، از courses بگیر =====
     if (slots.length === 0) {
         for (var i = 0; i < this.courses.length; i++) {
             var time = this.courses[i].time;
@@ -514,7 +507,6 @@ SchedulingSystem.prototype.changeCourseRoom = function(courseId, newRoomId) {
     course.roomId = newRoomId;
     course.roomName = newRoom.name;
     
-    // پیدا کردن آیتم در schedule
     var scheduleItem = null;
     for (var i = 0; i < this.schedule.length; i++) {
         if (this.schedule[i].courseId === courseId) {
@@ -620,7 +612,6 @@ SchedulingSystem.prototype.filterCourses = function() {
     if (teacherInput) this.filters.teacher = teacherInput.value.toLowerCase();
     if (daySelect) this.filters.day = daySelect.value;
     
-    // ===== اصلاح فیلتر ساعت برای select =====
     if (timeSelect) {
         var timeValue = timeSelect.value;
         if (timeValue === 'all' || timeValue === '') {
@@ -638,13 +629,13 @@ SchedulingSystem.prototype.resetFilters = function() {
     var courseInput = document.getElementById('filterCourse');
     var teacherInput = document.getElementById('filterTeacher');
     var daySelect = document.getElementById('filterDay');
-    var timeSelect = document.getElementById('filterTime');  // تغییر به select
+    var timeSelect = document.getElementById('filterTime');  
     var roomInput = document.getElementById('filterRoom');
     
     if (courseInput) courseInput.value = '';
     if (teacherInput) teacherInput.value = '';
     if (daySelect) daySelect.value = 'all';
-    if (timeSelect) timeSelect.value = 'all';  // برگرداندن به 'all'
+    if (timeSelect) timeSelect.value = 'all';  
     if (roomInput) roomInput.value = '';
     
     this.filters = { course: '', teacher: '', day: 'all', time: '', room: '' };
@@ -705,7 +696,6 @@ SchedulingSystem.prototype.renderSchedule = function() {
     var filtered = [];
     for (var i = 0; i < this.schedule.length; i++) filtered.push(this.schedule[i]);
     
-    // ===== فیلتر ساعت (برای select) =====
     if (this.filters.time) {
     var temp = [];
     for (var i = 0; i < filtered.length; i++) {
@@ -1061,7 +1051,7 @@ SchedulingSystem.prototype.importCoursesFromExcelFile = function() {
                     continue; 
                 }
                 
-                // ✅ ساعت رو فقط چک کن که خالی نباشه
+                // ساعت رو فقط چک کن که خالی نباشه
                 if (!time) { 
                     errorCount++; 
                     errors.push('ردیف ' + (i+1) + ': ساعت خالی'); 
@@ -1194,7 +1184,6 @@ SchedulingSystem.prototype.showImportCoursesStatus = function(message, type) {
 // ============================================
 
 SchedulingSystem.prototype.exportToPDF = function() {
-    // ===== تشخیص jsPDF =====
     var PDF = null;
     if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') {
         PDF = window.jspdf.jsPDF;
@@ -1278,7 +1267,6 @@ SchedulingSystem.prototype.exportToPDF = function() {
         filteredSchedule = temp;
     }
     
-    // ===== گرفتن ساعت‌ها از filteredSchedule =====
     var timeSlots = [];
     for (var i = 0; i < filteredSchedule.length; i++) {
         var time = filteredSchedule[i].timeSlot;
@@ -1287,7 +1275,6 @@ SchedulingSystem.prototype.exportToPDF = function() {
         }
     }
     
-    // اگه هیچ ساعتی در filteredSchedule نبود، از همه schedule بگیر
     if (timeSlots.length === 0) {
         for (var i = 0; i < this.schedule.length; i++) {
             var time = this.schedule[i].timeSlot;
@@ -1297,7 +1284,6 @@ SchedulingSystem.prototype.exportToPDF = function() {
         }
     }
     
-    // اگه باز هم هیچی نبود، از courses بگیر
     if (timeSlots.length === 0) {
         for (var i = 0; i < this.courses.length; i++) {
             var time = this.courses[i].time;
@@ -1314,7 +1300,6 @@ SchedulingSystem.prototype.exportToPDF = function() {
         return hourA - hourB;
     });
     
-    // ===== ساخت جدول HTML برای PDF با ساعت‌ها =====
     var tableHtml = '<table style="width:100%;direction:rtl;border-collapse:collapse;font-family:Tahoma,Arial,sans-serif;font-size:13px;">';
     
     // هدر جدول (روزها)
@@ -1378,7 +1363,6 @@ SchedulingSystem.prototype.exportToPDF = function() {
     
     tableHtml += '</tbody></table>';
     
-    // ===== ساخت wrapper =====
     var wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:1100px;background:white;padding:30px;direction:rtl;font-family:Tahoma,Arial,sans-serif;';
     
@@ -1408,12 +1392,10 @@ SchedulingSystem.prototype.exportToPDF = function() {
         wrapper.appendChild(filterInfo);
     }
     
-    // اضافه کردن جدول به wrapper
     wrapper.innerHTML += tableHtml;
     
     document.body.appendChild(wrapper);
-    
-    // ===== گرفتن عکس و ساخت PDF =====
+
     setTimeout(function() {
         html2canvas(wrapper, {
             scale: 2.5,
@@ -1469,7 +1451,7 @@ SchedulingSystem.prototype.clearAllCourses = function() {
     // ===== پاک کردن درس‌ها، برنامه و کلاس‌ها =====
     this.courses = [];
     this.schedule = [];
-    this.rooms = [];  // <--- این خط رو اضافه کنید
+    this.rooms = [];
     
     this.saveData();
     this.renderAll();
@@ -1495,7 +1477,6 @@ SchedulingSystem.prototype.backupData = function() {
             version: '1.0'
         };
         
-        // ===== تبدیل به JSON =====
         var jsonData = JSON.stringify(data, null, 2);
         var blob = new Blob([jsonData], { type: 'application/json' });
         var url = URL.createObjectURL(blob);
@@ -1526,7 +1507,6 @@ SchedulingSystem.prototype.backupData = function() {
 
 SchedulingSystem.prototype.restoreBackup = function() {
     try {
-        // ===== ایجاد input مخفی برای انتخاب فایل =====
         var input = document.createElement('input');
         input.type = 'file';
         input.accept = '.json';
@@ -1542,7 +1522,6 @@ SchedulingSystem.prototype.restoreBackup = function() {
             var reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    // ===== خواندن و解析 فایل =====
                     var data = JSON.parse(e.target.result);
                     
                     // ===== اعتبارسنجی داده‌ها =====

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>سامانه برنامه‌ریزی کلاس‌ها</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- HEADER -->
+    <header class="app-header">
+        <div class="container">
+            <a href="index.html" class="logo">
+                <i class="fas fa-calendar-alt"></i>
+                سامانه برنامه‌ریزی دانشگاه علوم و فنون مازندران
+            </a>
+            <nav class="nav-links">
+                <a href="index.html" class="active">برنامه هفتگی</a>
+                <a href="admin.html">مدیریت</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="container">
+            <h1>📋 برنامه هفتگی کلاس‌ها</h1>
+        </div>
+    </section>
+
+    <!-- MAIN -->
+    <main class="container">
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="row">
+                <div class="filter-group">
+                    <label><i class="fas fa-book"></i> نام درس</label>
+                    <input type="text" id="filterCourse" placeholder="جستجو..." oninput="system.filterCourses()">
+                </div>
+                <div class="filter-group">
+                    <label>نام استاد</label>
+                    <input type="text" id="filterTeacher" placeholder="جستجو..." oninput="system.filterCourses()">
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-calendar-day"></i> روز</label>
+                    <select id="filterDay" onchange="system.filterCourses()">
+                        <option value="all">همه روزها</option>
+                        <option value="شنبه">شنبه</option>
+                        <option value="یکشنبه">یکشنبه</option>
+                        <option value="دوشنبه">دوشنبه</option>
+                        <option value="سهشنبه">سهشنبه</option>
+                        <option value="چهارشنبه">چهارشنبه</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-clock"></i> ساعت</label>
+                    <select id="filterTime" onchange="system.filterCourses()">
+                        <option value="all">همه ساعات</option>
+                        <option value="08:00-10:00">۰۸:۰۰ - ۱۰:۰۰</option>
+                        <option value="10:00-12:00">۱۰:۰۰ - ۱۲:۰۰</option>
+                        <option value="13:00-15:00">۱۳:۰۰ - ۱۵:۰۰</option>
+                        <option value="15:00-17:00">۱۵:۰۰ - ۱۷:۰۰</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label><i class="fas fa-door-open"></i> کلاس</label>
+                    <input type="text" id="filterRoom" placeholder="مثال: ۱۰۱" oninput="system.filterCourses()">
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button onclick="system.resetFilters()" class="btn btn-outline btn-sm">
+                    <i class="fas fa-undo"></i> پاک کردن
+                </button>
+                <span class="result-count" id="filterCount">۰ نتیجه</span>
+            </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <span class="icon"><i class="fas fa-door-open"></i></span>
+                <span class="number" id="totalClasses">0</span>
+                <span class="label">تعداد کلاس‌ها</span>
+            </div>
+            <div class="stat-card">
+                <span class="icon"><i class="fas fa-users"></i></span>
+                <span class="number" id="totalStudents">0</span>
+                <span class="label">مجموع دانشجویان</span>
+            </div>
+            <div class="stat-card">
+                <span class="icon"><i class="fas fa-book"></i></span>
+                <span class="number" id="totalCourses">0</span>
+                <span class="label">تعداد درس‌ها</span>
+            </div>
+            <div class="stat-card">
+                <span class="icon"><i class="fas fa-check-circle"></i></span>
+                <span class="number" id="scheduledCount">0</span>
+                <span class="label">زمان‌بندی شده</span>
+            </div>
+        </div>
+
+        <!-- Schedule -->
+        <div class="schedule-wrapper">
+            <div class="schedule-header">
+                <h2><i class="fas fa-calendar-week"></i> برنامه هفتگی</h2>
+                <div class="actions">
+                    <button onclick="system.exportToPDF()" class="btn btn-outline btn-sm">
+                        <i class="fas fa-file-pdf"></i> خروجی PDF
+                    </button>
+                </div>
+            </div>
+            <div class="schedule-scroll">
+                <div id="scheduleTable"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+        <div class="container">
+            <p>© ۱۴۰۵ · سامانه برنامه‌ریزی دانشگاه علوم و فنون مازندران</p>
+        </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

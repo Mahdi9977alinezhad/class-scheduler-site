@@ -110,6 +110,25 @@
     gap: 8px;
 }
 
+/* ===== استایل دکمه‌های کلاس ===== */
+.room-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--gray-50);
+    border-radius: var(--radius-sm);
+    margin-bottom: 6px;
+    border: 1px solid var(--gray-200);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.room-actions {
+    display: flex;
+    gap: 6px;
+}
+
 /* وضعیت زمان‌بندی */
 .status-message {
     margin-top: 15px;

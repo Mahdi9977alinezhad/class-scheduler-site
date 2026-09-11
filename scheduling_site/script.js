@@ -76,6 +76,36 @@ SchedulingSystem.prototype.getTimeSlots = function() {
 };
 
 // ============================================
+// پر کردن پویا فیلتر ساعت
+// ============================================
+
+SchedulingSystem.prototype.updateTimeFilter = function() {
+    var select = document.getElementById('filterTime');
+    if (!select) return;
+
+    var currentValue = select.value;
+    
+    select.innerHTML = '<option value="all">همه ساعات</option>';
+    
+    var timeSlots = this.getTimeSlots();
+    
+    for (var i = 0; i < timeSlots.length; i++) {
+        var time = timeSlots[i];
+        var option = document.createElement('option');
+        option.value = time;
+        option.textContent = time;
+        select.appendChild(option);
+    }
+    
+    if (currentValue && currentValue !== 'all') {
+        select.value = currentValue;
+        if (select.value !== currentValue) {
+            select.value = 'all';
+        }
+    }
+};
+
+// ============================================
 // مدیریت کلاس‌ها
 // ============================================
 
@@ -130,6 +160,163 @@ SchedulingSystem.prototype.deleteRoom = function(id) {
     this.saveData();
     this.renderAll();
     this.showNotif('کلاس حذف شد.');
+};
+
+// ============================================
+// ویرایش کلاس‌ها
+// ============================================
+
+SchedulingSystem.prototype.showEditRoomModal = function(roomId) {
+    // ===== پیدا کردن کلاس =====
+    var room = null;
+    for (var i = 0; i < this.rooms.length; i++) {
+        if (this.rooms[i].id === roomId) {
+            room = this.rooms[i];
+            break;
+        }
+    }
+    if (!room) {
+        this.showNotif('کلاس پیدا نشد!', 'error');
+        return;
+    }
+    
+    // ===== بررسی استفاده در برنامه =====
+    var inUse = false;
+    for (var i = 0; i < this.schedule.length; i++) {
+        if (this.schedule[i].roomId === roomId) { inUse = true; break; }
+    }
+    
+    // ===== ساخت مودال =====
+    var modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+    
+    var content = document.createElement('div');
+    content.style.cssText = 'background:white;padding:30px;border-radius:12px;max-width:500px;width:95%;';
+    
+    var html = '<h3 style="margin-bottom:20px;">✏️ ویرایش کلاس</h3>';
+    
+    if (inUse) {
+        html += '<div style="background:#fff3cd;border:1px solid #ffeaa7;color:#856404;padding:12px;border-radius:8px;margin-bottom:15px;font-size:14px;">';
+        html += '⚠️ این کلاس در برنامه زمان‌بندی استفاده شده است.';
+        html += '</div>';
+    }
+    
+    // ===== فرم ویرایش =====
+    html += '<div class="form-group" style="margin-bottom:15px;">';
+    html += '<label style="display:block;font-weight:bold;margin-bottom:5px;">نام کلاس</label>';
+    html += '<input type="text" id="editRoomName" value="' + room.name + '" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">';
+    html += '</div>';
+    
+    html += '<div class="form-group" style="margin-bottom:20px;">';
+    html += '<label style="display:block;font-weight:bold;margin-bottom:5px;">ظرفیت کلاس</label>';
+    html += '<input type="number" id="editRoomCapacity" value="' + room.capacity + '" min="1" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:14px;">';
+    html += '</div>';
+    
+    // ===== دکمه‌ها =====
+    html += '<div style="display:flex;gap:10px;justify-content:flex-end;">';
+    html += '<button onclick="system.closeModal(this)" style="padding:10px 20px;border:none;border-radius:8px;background:#f44336;color:white;cursor:pointer;font-size:14px;">انصراف</button>';
+    html += '<button onclick="system.updateRoom(' + roomId + ')" style="padding:10px 25px;border:none;border-radius:8px;background:#4CAF50;color:white;cursor:pointer;font-size:14px;font-weight:bold;">💾 ذخیره تغییرات</button>';
+    html += '</div>';
+    
+    content.innerHTML = html;
+    modal.appendChild(content);
+    document.body.appendChild(modal);
+    
+    // بستن با کلیک بیرون
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+        }
+    });
+};
+
+SchedulingSystem.prototype.updateRoom = function(roomId) {
+    // ===== پیدا کردن کلاس =====
+    var room = null;
+    for (var i = 0; i < this.rooms.length; i++) {
+        if (this.rooms[i].id === roomId) {
+            room = this.rooms[i];
+            break;
+        }
+    }
+    if (!room) {
+        this.showNotif('کلاس پیدا نشد!', 'error');
+        return;
+    }
+    
+    // ===== گرفتن مقادیر جدید =====
+    var newName = document.getElementById('editRoomName').value.trim();
+    var newCapacity = parseInt(document.getElementById('editRoomCapacity').value);
+    
+    // ===== اعتبارسنجی =====
+    if (!newName) {
+        this.showNotif('لطفاً نام کلاس را وارد کنید.', 'error');
+        return;
+    }
+    
+    if (isNaN(newCapacity) || newCapacity < 1) {
+        this.showNotif('ظرفیت نامعتبر است.', 'error');
+        return;
+    }
+    
+    // ===== بررسی تکراری نبودن نام =====
+    for (var i = 0; i < this.rooms.length; i++) {
+        if (this.rooms[i].id !== roomId && this.rooms[i].name === newName) {
+            this.showNotif('کلاس دیگری با این نام وجود دارد!', 'error');
+            return;
+        }
+    }
+    
+    // ===== بررسی تداخل با درس‌ها =====
+    if (newCapacity < room.capacity) {
+        // اگه ظرفیت کم میشه، چک کن که درسی با تعداد بیشتر از ظرفیت جدید توش نباشه
+        for (var i = 0; i < this.schedule.length; i++) {
+            if (this.schedule[i].roomId === roomId) {
+                var course = null;
+                for (var j = 0; j < this.courses.length; j++) {
+                    if (this.courses[j].id === this.schedule[i].courseId) {
+                        course = this.courses[j];
+                        break;
+                    }
+                }
+                if (course && course.studentCount > newCapacity) {
+                    this.showNotif('❌ ظرفیت جدید برای درس "' + course.name + '" با ' + course.studentCount + ' دانشجو کافی نیست!', 'error');
+                    return;
+                }
+            }
+        }
+    }
+    
+    // ===== ذخیره نام قبلی =====
+    var oldName = room.name;
+    var oldCapacity = room.capacity;
+    
+    // ===== اعمال تغییرات =====
+    room.name = newName;
+    room.capacity = newCapacity;
+    
+    // ===== به‌روزرسانی نام در schedule =====
+    for (var i = 0; i < this.schedule.length; i++) {
+        if (this.schedule[i].roomId === roomId) {
+            this.schedule[i].roomName = newName;
+        }
+    }
+    
+    // ===== به‌روزرسانی نام در courses =====
+    for (var i = 0; i < this.courses.length; i++) {
+        if (this.courses[i].roomId === roomId) {
+            this.courses[i].roomName = newName;
+        }
+    }
+    
+    this.saveData();
+    this.renderAll();
+    
+    // ===== بستن مودال =====
+    var modal = document.querySelector('div[style*="position:fixed"][style*="z-index:9999"]');
+    if (modal) modal.remove();
+    
+    this.showNotif('✅ کلاس "' + newName + '" با موفقیت ویرایش شد!');
 };
 
 // ============================================
@@ -647,6 +834,7 @@ SchedulingSystem.prototype.resetFilters = function() {
 // ============================================
 
 SchedulingSystem.prototype.renderAll = function() {
+    this.updateTimeFilter();
     this.renderStats();
     this.renderSchedule();
     this.renderRoomsList();
@@ -810,7 +998,10 @@ SchedulingSystem.prototype.renderRoomsList = function() {
         html += '<span class="room-name">' + room.name + '</span>';
         html += '<span class="room-capacity">ظرفیت: ' + room.capacity + '</span>';
         html += '</div>';
+        html += '<div class="room-actions">';
+        html += '<button onclick="system.showEditRoomModal(' + room.id + ')" class="btn btn-primary btn-sm" style="background:#ff9800;border-color:#ff9800;">ویرایش</button>';
         html += '<button onclick="system.deleteRoom(' + room.id + ')" class="btn btn-danger btn-sm">حذف</button>';
+        html += '</div>';
         html += '</div>';
     }
     container.innerHTML = html;
@@ -1184,6 +1375,7 @@ SchedulingSystem.prototype.showImportCoursesStatus = function(message, type) {
 // ============================================
 
 SchedulingSystem.prototype.exportToPDF = function() {
+    // ===== تشخیص jsPDF =====
     var PDF = null;
     if (typeof window.jspdf !== 'undefined' && typeof window.jspdf.jsPDF !== 'undefined') {
         PDF = window.jspdf.jsPDF;
@@ -1211,8 +1403,8 @@ SchedulingSystem.prototype.exportToPDF = function() {
     
     // ===== آماده‌سازی نام فایل =====
     var hasFilter = this.filters.course || this.filters.teacher  
-                this.filters.day !== 'all' || this.filters.time  
-                this.filters.room;
+                    this.filters.day !== 'all' || this.filters.time  
+                    this.filters.room;
     
     var filename = 'برنامه_کلاس‌ها';
     if (hasFilter) {
@@ -1267,6 +1459,7 @@ SchedulingSystem.prototype.exportToPDF = function() {
         filteredSchedule = temp;
     }
     
+    // ===== گرفتن ساعت‌ها =====
     var timeSlots = [];
     for (var i = 0; i < filteredSchedule.length; i++) {
         var time = filteredSchedule[i].timeSlot;
@@ -1274,7 +1467,6 @@ SchedulingSystem.prototype.exportToPDF = function() {
             timeSlots.push(time);
         }
     }
-    
     if (timeSlots.length === 0) {
         for (var i = 0; i < this.schedule.length; i++) {
             var time = this.schedule[i].timeSlot;
@@ -1283,51 +1475,38 @@ SchedulingSystem.prototype.exportToPDF = function() {
             }
         }
     }
-    
-    if (timeSlots.length === 0) {
-        for (var i = 0; i < this.courses.length; i++) {
-            var time = this.courses[i].time;
-            if (time && timeSlots.indexOf(time) === -1) {
-                timeSlots.push(time);
-            }
-        }
-    }
-    
-    // مرتب‌سازی ساعت‌ها
     timeSlots.sort(function(a, b) {
         var hourA = parseInt(a.split(':')[0]);
         var hourB = parseInt(b.split(':')[0]);
         return hourA - hourB;
     });
     
+    // ===== تعیین عنوان PDF (پویا برای همه کلاس‌ها) =====
+    var pdfTitle = 'برنامه هفتگی کلاس‌ها';
+    if (this.filters.room) {
+        pdfTitle = 'برنامه هفتگی کلاس ' + this.filters.room;
+    }
+    
+    // ===== ساخت جدول HTML =====
     var tableHtml = '<table style="width:100%;direction:rtl;border-collapse:collapse;font-family:Tahoma,Arial,sans-serif;font-size:13px;">';
     
-    // هدر جدول (روزها)
     tableHtml += '<thead><tr>';
     tableHtml += '<th style="border:1px solid #333;padding:10px 12px;text-align:center;background:#2c3e50;color:white;font-weight:bold;font-size:14px;">زمان</th>';
     for (var d = 0; d < this.days.length; d++) {
-        var day = this.days[d];
-        tableHtml += '<th style="border:1px solid #333;padding:10px 12px;text-align:center;background:#2c3e50;color:white;font-weight:bold;font-size:14px;">' + day + '</th>';
+        tableHtml += '<th style="border:1px solid #333;padding:10px 12px;text-align:center;background:#2c3e50;color:white;font-weight:bold;font-size:14px;">' + this.days[d] + '</th>';
     }
-    tableHtml += '</tr></thead>';
-    
-    // بدنه جدول
-    tableHtml += '<tbody>';
+    tableHtml += '</tr></thead><tbody>';
     
     if (timeSlots.length === 0) {
         tableHtml += '<tr><td colspan="' + (this.days.length + 1) + '" style="text-align:center;padding:40px;border:1px solid #333;font-size:16px;color:#999;">هیچ ساعتی ثبت نشده است</td></tr>';
     } else {
         for (var t = 0; t < timeSlots.length; t++) {
             var time = timeSlots[t];
-            
-            // سطر ساعت
             tableHtml += '<tr>';
             tableHtml += '<td style="border:1px solid #333;padding:10px 12px;text-align:center;background:#ecf0f1;font-weight:bold;font-size:13px;">' + time + '</td>';
             
             for (var d2 = 0; d2 < this.days.length; d2++) {
                 var dayName = this.days[d2];
-                
-                // پیدا کردن درس‌های این روز و ساعت
                 var items = [];
                 for (var s = 0; s < filteredSchedule.length; s++) {
                     if (filteredSchedule[s].day === dayName && filteredSchedule[s].timeSlot === time) {
@@ -1360,25 +1539,25 @@ SchedulingSystem.prototype.exportToPDF = function() {
             tableHtml += '</tr>';
         }
     }
-    
     tableHtml += '</tbody></table>';
     
+    // ===== ساخت wrapper =====
     var wrapper = document.createElement('div');
     wrapper.style.cssText = 'position:absolute;left:-9999px;top:0;width:1100px;background:white;padding:30px;direction:rtl;font-family:Tahoma,Arial,sans-serif;';
     
-    // عنوان
+    // ===== نام دانشگاه (کوچیک) =====
+    var uniName = document.createElement('p');
+    uniName.style.cssText = 'text-align:center;margin-bottom:5px;color:#666;font-size:14px;';
+    uniName.textContent = 'دانشگاه علوم و فنون مازندران';
+    wrapper.appendChild(uniName);
+    
+    // ===== عنوان اصلی (بدون آیکون) =====
     var title = document.createElement('h2');
-    title.style.cssText = 'text-align:center;margin-bottom:10px;color:#2c3e50;font-size:24px;';
-    title.textContent = '📋 برنامه هفتگی کلاس‌ها';
+    title.style.cssText = 'text-align:center;margin-bottom:20px;color:#2c3e50;font-size:22px;';
+    title.textContent = pdfTitle;
     wrapper.appendChild(title);
     
-    // تاریخ
-    var dateInfo = document.createElement('p');
-    dateInfo.style.cssText = 'text-align:center;margin-bottom:10px;color:#666;font-size:14px;';
-    dateInfo.textContent = 'تاریخ: ' + new Date().toLocaleDateString('fa-IR');
-    wrapper.appendChild(dateInfo);
-    
-    // فیلترها
+    // ===== فیلترها (اگه وجود داشت) =====
     if (hasFilter) {
         var filterInfo = document.createElement('p');
         filterInfo.style.cssText = 'text-align:center;margin-bottom:15px;color:#3498db;font-size:13px;';
@@ -1392,10 +1571,12 @@ SchedulingSystem.prototype.exportToPDF = function() {
         wrapper.appendChild(filterInfo);
     }
     
+    // اضافه کردن جدول
     wrapper.innerHTML += tableHtml;
     
     document.body.appendChild(wrapper);
-
+    
+    // ===== گرفتن عکس و ساخت PDF =====
     setTimeout(function() {
         html2canvas(wrapper, {
             scale: 2.5,

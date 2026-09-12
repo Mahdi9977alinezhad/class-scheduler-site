@@ -356,8 +356,8 @@ body {
 .schedule-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 14px;
-    min-width: 700px;
+    font-size: 13px;
+    min-width: 800px;
 }
 
 .schedule-table th {
@@ -679,6 +679,11 @@ body {
     }
     .schedule-header .actions {
         justify-content: flex-start;
+    }
+
+    .schedule-table{
+        font-size: 11px;
+        min-width: 600px;
     }
 
     .class-item {
